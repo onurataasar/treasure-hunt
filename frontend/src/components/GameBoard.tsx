@@ -9,11 +9,68 @@ import { MinusIcon, PlusIcon } from "@heroicons/react/24/solid";
 import { DiceModal } from "./DiceModal";
 import { RoundEffectsModal } from "./RoundEffectsModal";
 
-const BOARD_SIZE = 36; // 6x6 grid
-const SPACE_SIZE = 80; // Increased size for better visibility
-const SPACE_GAP = 30; // Increased gap between spaces
-const BOARD_COLUMNS = 6;
-const ANIMATION_DURATION = 1.2; // Increased from 0.5 to 1.2 seconds
+const BOARD_SIZE = 36;
+const SPACE_SIZE = 90; // Slightly larger for better visibility
+const SPACE_GAP = 60; // Much larger gap for better distribution
+const BOARD_COLUMNS = 12;
+const ANIMATION_DURATION = 1.2;
+
+// Calculate positions with better distribution
+const BASE_POSITIONS = Array.from({ length: BOARD_SIZE }, (_, i) => {
+  const row = Math.floor(i / BOARD_COLUMNS);
+  const isReversedRow = row % 2 === 1;
+  const col = isReversedRow
+    ? BOARD_COLUMNS - 1 - (i % BOARD_COLUMNS)
+    : i % BOARD_COLUMNS;
+
+  // Add more random distribution but keep it controlled
+  const randomX = (Math.random() - 0.5) * SPACE_GAP * 0.5;
+  const randomY = (Math.random() - 0.5) * SPACE_GAP * 0.5;
+
+  return {
+    baseX: col * (SPACE_SIZE + SPACE_GAP) + randomX,
+    baseY: row * (SPACE_SIZE + SPACE_GAP * 1.5) + randomY,
+  };
+});
+
+// Helper function to determine connector points
+const getConnectorPoints = (
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  size: number
+) => {
+  // Calculate center points
+  const fromCenterX = fromX + size / 2;
+  const fromCenterY = fromY + size / 2;
+  const toCenterX = toX + size / 2;
+  const toCenterY = toY + size / 2;
+
+  // Determine which sides to connect from
+  const dx = toCenterX - fromCenterX;
+  const dy = toCenterY - fromCenterY;
+  const absDx = Math.abs(dx);
+  const absDy = Math.abs(dy);
+
+  let startX, startY, endX, endY;
+
+  if (absDx > absDy) {
+    // Connect horizontally
+    startX = dx > 0 ? fromX + size : fromX;
+    startY = fromCenterY;
+    endX = dx > 0 ? toX : toX + size;
+    endY = toCenterY;
+  } else {
+    // Connect vertically
+    startX = fromCenterX;
+    startY = dy > 0 ? fromY + size : fromY;
+    endX = toCenterX;
+    endY = dy > 0 ? toY : toY + size;
+  }
+
+  return { startX, startY, endX, endY };
+};
 
 interface GameBoardProps {
   gameState: GameState;
@@ -140,24 +197,62 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
   const isReversedRow = (row: number) => row % 2 === 1;
 
   const getBoardSpacePosition = (index: number) => {
-    const row = Math.floor(index / BOARD_COLUMNS);
-    const isReversedRow = row % 2 === 1;
-    const col = isReversedRow
-      ? BOARD_COLUMNS - 1 - (index % BOARD_COLUMNS)
-      : index % BOARD_COLUMNS;
-
-    // Add padding to the board
-    const paddingX = SPACE_GAP;
-    const paddingY = SPACE_GAP;
+    const position = BASE_POSITIONS[index];
+    const paddingX = SPACE_GAP * 2;
+    const paddingY = SPACE_GAP * 2;
 
     return {
-      x: paddingX + col * (SPACE_SIZE + SPACE_GAP),
-      y: paddingY + row * (SPACE_SIZE + SPACE_GAP),
+      x: paddingX + position.baseX,
+      y: paddingY + position.baseY,
     };
   };
 
   const renderBoardSpace = (space: BoardSpace, index: number) => {
     const { x, y } = getBoardSpacePosition(index);
+    const nextIndex = index + 1;
+    const row = Math.floor(index / BOARD_COLUMNS);
+    const isReversedRow = row % 2 === 1;
+    const nextPos =
+      nextIndex < BOARD_SIZE &&
+      (nextIndex % BOARD_COLUMNS !== 0 || isReversedRow)
+        ? getBoardSpacePosition(nextIndex)
+        : null;
+
+    // Calculate SVG path for connector
+    const renderConnector = () => {
+      if (!nextPos) return null;
+
+      // Calculate the direction vector
+      const dx = nextPos.x - x;
+      const dy = nextPos.y - y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      // Start from the edge of current space
+      const startX = SPACE_SIZE / 2;
+      const startY = SPACE_SIZE / 2;
+
+      // End at the edge of next space
+      const endX = startX + distance;
+      const endY = startY;
+
+      // Add a slight curve
+      const midX = (startX + endX) / 2;
+      const midY = startY + (isReversedRow ? 20 : -20);
+
+      return (
+        <path
+          d={`M ${startX} ${startY} Q ${midX} ${midY} ${endX} ${endY}`}
+          stroke="rgba(0,0,0,0.2)"
+          strokeWidth="2"
+          fill="none"
+          strokeLinecap="round"
+          style={{
+            transform: `rotate(${Math.atan2(dy, dx) * (180 / Math.PI)}deg)`,
+            transformOrigin: `${startX}px ${startY}px`,
+          }}
+        />
+      );
+    };
 
     return (
       <motion.div
@@ -173,12 +268,31 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
           top: y,
         }}
       >
+        {/* SVG Connector - render before space to be under it */}
+        {nextPos && (
+          <svg
+            className="absolute top-0 left-0"
+            width={SPACE_SIZE * 2}
+            height={SPACE_SIZE * 2}
+            style={{
+              pointerEvents: "none",
+              overflow: "visible",
+            }}
+          >
+            {renderConnector()}
+          </svg>
+        )}
+
         {/* Space background */}
         <div
           className={`${getSpaceColor(
             space
-          )} w-full h-full rounded-lg shadow-md flex flex-col items-center justify-center
-          relative transition-transform hover:scale-105 cursor-pointer`}
+          )} w-full h-full rounded-lg shadow-lg flex flex-col items-center justify-center
+          relative transition-transform hover:scale-105 cursor-pointer border-2 border-gray-200/30`}
+          style={{
+            boxShadow:
+              "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+          }}
         >
           {getSpaceIcon(space.type)}
           {space.points && (
@@ -188,39 +302,13 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
           )}
         </div>
 
-        {/* Connectors */}
-        {index < BOARD_SIZE - 1 && (
-          <>
-            {/* Horizontal connector */}
-            {(index + 1) % BOARD_COLUMNS !== 0 && (
-              <div
-                className="absolute bg-gray-300"
-                style={{
-                  width: SPACE_GAP,
-                  height: "4px",
-                  left: SPACE_SIZE,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                }}
-              />
-            )}
-            {/* Vertical connector for snake pattern */}
-            {(index + 1) % BOARD_COLUMNS === 0 &&
-              index < BOARD_SIZE - BOARD_COLUMNS && (
-                <div
-                  className="absolute bg-gray-300"
-                  style={{
-                    width: "4px",
-                    height: SPACE_GAP,
-                    left: isReversedRow(Math.floor(index / BOARD_COLUMNS))
-                      ? 0
-                      : SPACE_SIZE,
-                    top: SPACE_SIZE,
-                  }}
-                />
-              )}
-          </>
-        )}
+        {/* Space number */}
+        <div
+          className="absolute -top-1 -left-1 w-5 h-5 bg-gray-800 rounded-full flex items-center justify-center text-xs text-white font-medium"
+          style={{ opacity: 0.3 }}
+        >
+          {index + 1}
+        </div>
       </motion.div>
     );
   };
@@ -344,7 +432,7 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
         />
       )}
       <div className="min-h-screen bg-ivory p-4">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[1600px] mx-auto">
           {/* Game Status */}
           <div className="bg-white rounded-xl shadow-lg p-4 mb-4">
             <div className="text-lg font-semibold text-navy mb-2 flex items-center gap-2">
@@ -371,14 +459,31 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
           {renderDice()}
 
           {/* Game Board with Zoom Controls */}
-          <div className="relative mb-4 bg-white rounded-xl shadow-lg p-4">
+          <div className="relative mb-4 bg-white rounded-xl shadow-lg p-4 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-navy/5 to-ottoman-red/5" />
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage: `
+                  radial-gradient(circle at 10% 20%, rgba(0, 165, 168, 0.05) 0%, transparent 20%),
+                  radial-gradient(circle at 90% 80%, rgba(232, 31, 61, 0.05) 0%, transparent 20%),
+                  linear-gradient(45deg, rgba(0,0,0,0.02) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.02) 75%),
+                  linear-gradient(-45deg, rgba(0,0,0,0.02) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.02) 75%)
+                `,
+                backgroundSize: "100% 100%, 100% 100%, 40px 40px, 40px 40px",
+                backgroundPosition: "0 0, 0 0, 0 0, 20px 20px",
+              }}
+            />
             <TransformWrapper
-              initialScale={1}
-              minScale={0.5}
-              maxScale={2}
+              initialScale={0.7}
+              minScale={0.4}
+              maxScale={1.5}
               centerOnInit={true}
-              limitToBounds={true}
-              wheel={{ step: 0.1 }}
+              limitToBounds={false}
+              wheel={{ step: 0.05 }}
+              doubleClick={{ disabled: true }}
+              alignmentAnimation={{ disabled: true }}
+              centerZoomedOut={false}
             >
               {({ zoomIn, zoomOut }) => (
                 <>
@@ -397,19 +502,19 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
                     </button>
                   </div>
                   <TransformComponent
-                    wrapperClass="!w-full !h-[600px]"
+                    wrapperClass="!w-full !h-[500px]"
                     contentClass="!w-full !h-full flex items-center justify-center"
                   >
                     <div
-                      className="relative bg-gradient-to-br from-ivory to-gray-100 rounded-lg p-8"
+                      className="relative"
                       style={{
                         width:
                           BOARD_COLUMNS * (SPACE_SIZE + SPACE_GAP) +
-                          SPACE_GAP * 2,
+                          SPACE_GAP * 4,
                         height:
                           Math.ceil(BOARD_SIZE / BOARD_COLUMNS) *
                             (SPACE_SIZE + SPACE_GAP) +
-                          SPACE_GAP * 2,
+                          SPACE_GAP * 4,
                       }}
                     >
                       {/* Render board spaces */}

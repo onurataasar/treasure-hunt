@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { Player, GameState, BoardSpace } from "../types/game";
@@ -92,6 +92,7 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
     Record<string, number>
   >({});
   const isMyTurn = gameState.currentTurn === playerId;
+  const transformComponentRef = useRef<any>(null);
 
   // Initialize previous positions
   useEffect(() => {
@@ -345,12 +346,12 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
           width: "32px",
           height: "32px",
           zIndex: isMoving ? 30 : 20,
-          left: prevPos.x + SPACE_SIZE / 2,
-          top: prevPos.y + SPACE_SIZE / 2,
+          left: prevPos.x + SPACE_SIZE - 16,
+          top: prevPos.y + SPACE_SIZE - 16,
         }}
         animate={{
-          left: currentPos.x + SPACE_SIZE / 2,
-          top: currentPos.y + SPACE_SIZE / 2,
+          left: currentPos.x + SPACE_SIZE - 16,
+          top: currentPos.y + SPACE_SIZE - 16,
           translateX: offset,
           scale: isMoving ? [1, 1.4, 1] : 1,
           rotate: isMoving ? [0, 720] : 0,
@@ -424,6 +425,28 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
     );
   };
 
+  const focusOnPlayer = (player: Player) => {
+    if (!transformComponentRef.current) return;
+
+    const { x, y } = getBoardSpacePosition(player.position);
+    const boardContainer = document.querySelector(".react-transform-component");
+    if (!boardContainer) return;
+
+    const scale = 1.2;
+    const containerWidth = boardContainer.clientWidth;
+    const containerHeight = boardContainer.clientHeight;
+
+    // Calculate the center position including padding and space size
+    const centerX = -(x - containerWidth / 2 + SPACE_SIZE / 2);
+    const centerY = -(y - containerHeight / 2 + SPACE_SIZE / 2);
+
+    transformComponentRef.current.setTransform(
+      centerX * scale,
+      centerY * scale,
+      scale
+    );
+  };
+
   return (
     <>
       <DiceModal
@@ -494,61 +517,65 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
               alignmentAnimation={{ disabled: true }}
               centerZoomedOut={false}
             >
-              {({ zoomIn, zoomOut }) => (
-                <>
-                  <div className="absolute top-4 right-4 flex gap-2 z-30">
-                    <button
-                      onClick={() => zoomIn()}
-                      className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50"
-                    >
-                      <PlusIcon className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => zoomOut()}
-                      className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50"
-                    >
-                      <MinusIcon className="w-5 h-5" />
-                    </button>
-                  </div>
-                  <TransformComponent
-                    wrapperClass="!w-full !h-[500px]"
-                    contentClass="!w-full !h-full flex items-center justify-center"
-                  >
-                    <div
-                      className="relative"
-                      style={{
-                        width:
-                          BOARD_COLUMNS * (SPACE_SIZE + SPACE_GAP) +
-                          SPACE_GAP * 4,
-                        height:
-                          Math.ceil(BOARD_SIZE / BOARD_COLUMNS) *
-                            (SPACE_SIZE + SPACE_GAP) +
-                          SPACE_GAP * 4,
-                      }}
-                    >
-                      {/* Render board spaces */}
-                      {gameState.board.map((space, index) =>
-                        renderBoardSpace(space, index)
-                      )}
-
-                      {/* Render all players */}
-                      {gameState.players.map((player, idx) => {
-                        const playersOnSameSpace = gameState.players.filter(
-                          (p) => p.position === player.position
-                        );
-                        const indexOnSpace = playersOnSameSpace.findIndex(
-                          (p) => p.id === player.id
-                        );
-                        return renderPlayerPiece(
-                          player,
-                          indexOnSpace,
-                          playersOnSameSpace.length
-                        );
-                      })}
+              {({ zoomIn, zoomOut, setTransform }) => {
+                // Store the ref to access transform methods
+                transformComponentRef.current = { setTransform };
+                return (
+                  <>
+                    <div className="absolute top-4 right-4 flex gap-2 z-30">
+                      <button
+                        onClick={() => zoomIn()}
+                        className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50"
+                      >
+                        <PlusIcon className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => zoomOut()}
+                        className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50"
+                      >
+                        <MinusIcon className="w-5 h-5" />
+                      </button>
                     </div>
-                  </TransformComponent>
-                </>
-              )}
+                    <TransformComponent
+                      wrapperClass="!w-full !h-[500px]"
+                      contentClass="!w-full !h-full flex items-center justify-center"
+                    >
+                      <div
+                        className="relative"
+                        style={{
+                          width:
+                            BOARD_COLUMNS * (SPACE_SIZE + SPACE_GAP) +
+                            SPACE_GAP * 4,
+                          height:
+                            Math.ceil(BOARD_SIZE / BOARD_COLUMNS) *
+                              (SPACE_SIZE + SPACE_GAP) +
+                            SPACE_GAP * 4,
+                        }}
+                      >
+                        {/* Render board spaces */}
+                        {gameState.board.map((space, index) =>
+                          renderBoardSpace(space, index)
+                        )}
+
+                        {/* Render all players */}
+                        {gameState.players.map((player, idx) => {
+                          const playersOnSameSpace = gameState.players.filter(
+                            (p) => p.position === player.position
+                          );
+                          const indexOnSpace = playersOnSameSpace.findIndex(
+                            (p) => p.id === player.id
+                          );
+                          return renderPlayerPiece(
+                            player,
+                            indexOnSpace,
+                            playersOnSameSpace.length
+                          );
+                        })}
+                      </div>
+                    </TransformComponent>
+                  </>
+                );
+              }}
             </TransformWrapper>
           </div>
 
@@ -566,7 +593,10 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
                     key={player.id}
                     className="flex items-center justify-between bg-gray-50 p-3 rounded-lg"
                   >
-                    <span className="font-medium flex items-center gap-2">
+                    <button
+                      onClick={() => focusOnPlayer(player)}
+                      className="font-medium flex items-center gap-2 hover:text-ottoman-red transition-colors"
+                    >
                       <GameIcons.User
                         className={`${IconSizes.sm} ${
                           player.id === playerId
@@ -580,7 +610,7 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
                           className={`${IconSizes.sm} text-gold`}
                         />
                       )}
-                    </span>
+                    </button>
                     <span className="font-bold text-ottoman-red">
                       {player.score}
                     </span>

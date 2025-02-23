@@ -7,6 +7,7 @@ import { Tutorial } from "./Tutorial";
 import { GameIcons, IconSizes } from "../constants/icons";
 import { MinusIcon, PlusIcon } from "@heroicons/react/24/solid";
 import { DiceModal } from "./DiceModal";
+import { RoundEffectsModal } from "./RoundEffectsModal";
 
 const BOARD_SIZE = 36; // 6x6 grid
 const SPACE_SIZE = 80; // Increased size for better visibility
@@ -25,6 +26,11 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
   const [lastAction, setLastAction] = useState<string>("");
   const [movingPlayerId, setMovingPlayerId] = useState<string | null>(null);
   const [showDiceModal, setShowDiceModal] = useState(false);
+  const [showEffectsModal, setShowEffectsModal] = useState(false);
+  const [currentEffect, setCurrentEffect] = useState<{
+    player: Player;
+    space: BoardSpace;
+  } | null>(null);
   const [previousPositions, setPreviousPositions] = useState<
     Record<string, number>
   >({});
@@ -59,6 +65,16 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
               [currentPlayer.id]: currentPlayer.position,
             }));
             setMovingPlayerId(null);
+
+            // Show effects modal after movement
+            const space = gameState.board[currentPlayer.position];
+            if (space.type !== "normal") {
+              setCurrentEffect({
+                player: currentPlayer,
+                space: space,
+              });
+              setShowEffectsModal(true);
+            }
           }, ANIMATION_DURATION * 1000);
         }
       }
@@ -319,6 +335,14 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
         onRollComplete={handleRollComplete}
         diceValue={gameState.diceRoll || undefined}
       />
+      {currentEffect && (
+        <RoundEffectsModal
+          isOpen={showEffectsModal}
+          onClose={() => setShowEffectsModal(false)}
+          player={currentEffect.player}
+          space={currentEffect.space}
+        />
+      )}
       <div className="min-h-screen bg-ivory p-4">
         <div className="max-w-7xl mx-auto">
           {/* Game Status */}

@@ -6,6 +6,7 @@ import { socket } from "../services/socket";
 import { Tutorial } from "./Tutorial";
 import { GameIcons, IconSizes } from "../constants/icons";
 import { MinusIcon, PlusIcon } from "@heroicons/react/24/solid";
+import { DiceModal } from "./DiceModal";
 
 const BOARD_SIZE = 36; // 6x6 grid
 const SPACE_SIZE = 80; // Increased size for better visibility
@@ -23,6 +24,7 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
   const [showTutorial, setShowTutorial] = useState(true);
   const [lastAction, setLastAction] = useState<string>("");
   const [movingPlayerId, setMovingPlayerId] = useState<string | null>(null);
+  const [showDiceModal, setShowDiceModal] = useState(false);
   const [previousPositions, setPreviousPositions] = useState<
     Record<string, number>
   >({});
@@ -64,8 +66,12 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
   }, [gameState.diceRoll, gameState.currentTurn]);
 
   const handleRollDice = () => {
-    if (!isMyTurn || isRolling) return;
+    if (!isMyTurn || isRolling || gameState.diceRoll !== null) return;
     setIsRolling(true);
+    setShowDiceModal(true);
+  };
+
+  const handleRollComplete = () => {
     socket.emit("rollDice", { gameCode: gameState.gameCode, playerId });
   };
 
@@ -292,13 +298,13 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleRollDice}
-            disabled={isRolling}
+            disabled={isRolling || gameState.diceRoll !== null}
             className="mt-4 bg-ottoman-red text-white py-3 px-6 rounded-lg font-semibold 
               disabled:opacity-50 disabled:cursor-not-allowed transition-all w-full
               flex items-center justify-center gap-2 shadow-lg hover:bg-red-700"
           >
             <GameIcons.Dice className={IconSizes.md} />
-            Zar At
+            {gameState.diceRoll !== null ? "Zar Atıldı" : "Zar At"}
           </motion.button>
         )}
       </div>
@@ -306,151 +312,161 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-ivory p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Game Status */}
-        <div className="bg-white rounded-xl shadow-lg p-4 mb-4">
-          <div className="text-lg font-semibold text-navy mb-2 flex items-center gap-2">
-            {isMyTurn ? (
-              <>
-                <GameIcons.Crown className={IconSizes.md} />
-                <span>Senin Sıran!</span>
-              </>
-            ) : (
-              <>
-                <GameIcons.User className={IconSizes.md} />
-                <span>{getCurrentPlayer()?.name} oynuyor</span>
-              </>
-            )}
-          </div>
-          {lastAction && (
-            <div className="text-sm text-gray-600 flex items-center gap-2">
-              <GameIcons.Dice className={IconSizes.sm} />
-              {lastAction}
+    <>
+      <DiceModal
+        isOpen={showDiceModal}
+        onClose={() => setShowDiceModal(false)}
+        onRollComplete={handleRollComplete}
+        diceValue={gameState.diceRoll || undefined}
+      />
+      <div className="min-h-screen bg-ivory p-4">
+        <div className="max-w-7xl mx-auto">
+          {/* Game Status */}
+          <div className="bg-white rounded-xl shadow-lg p-4 mb-4">
+            <div className="text-lg font-semibold text-navy mb-2 flex items-center gap-2">
+              {isMyTurn ? (
+                <>
+                  <GameIcons.Crown className={IconSizes.md} />
+                  <span>Senin Sıran!</span>
+                </>
+              ) : (
+                <>
+                  <GameIcons.User className={IconSizes.md} />
+                  <span>{getCurrentPlayer()?.name} oynuyor</span>
+                </>
+              )}
             </div>
-          )}
-        </div>
-
-        {renderDice()}
-
-        {/* Game Board with Zoom Controls */}
-        <div className="relative mb-4 bg-white rounded-xl shadow-lg p-4">
-          <TransformWrapper
-            initialScale={1}
-            minScale={0.5}
-            maxScale={2}
-            centerOnInit={true}
-            limitToBounds={true}
-            wheel={{ step: 0.1 }}
-          >
-            {({ zoomIn, zoomOut }) => (
-              <>
-                <div className="absolute top-4 right-4 flex gap-2 z-30">
-                  <button
-                    onClick={() => zoomIn()}
-                    className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50"
-                  >
-                    <PlusIcon className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => zoomOut()}
-                    className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50"
-                  >
-                    <MinusIcon className="w-5 h-5" />
-                  </button>
-                </div>
-                <TransformComponent
-                  wrapperClass="!w-full !h-[600px]"
-                  contentClass="!w-full !h-full flex items-center justify-center"
-                >
-                  <div
-                    className="relative bg-gradient-to-br from-ivory to-gray-100 rounded-lg p-8"
-                    style={{
-                      width:
-                        BOARD_COLUMNS * (SPACE_SIZE + SPACE_GAP) +
-                        SPACE_GAP * 2,
-                      height:
-                        Math.ceil(BOARD_SIZE / BOARD_COLUMNS) *
-                          (SPACE_SIZE + SPACE_GAP) +
-                        SPACE_GAP * 2,
-                    }}
-                  >
-                    {/* Render board spaces */}
-                    {gameState.board.map((space, index) =>
-                      renderBoardSpace(space, index)
-                    )}
-
-                    {/* Render all players */}
-                    {gameState.players.map((player, idx) => {
-                      const playersOnSameSpace = gameState.players.filter(
-                        (p) => p.position === player.position
-                      );
-                      const indexOnSpace = playersOnSameSpace.findIndex(
-                        (p) => p.id === player.id
-                      );
-                      return renderPlayerPiece(
-                        player,
-                        indexOnSpace,
-                        playersOnSameSpace.length
-                      );
-                    })}
-                  </div>
-                </TransformComponent>
-              </>
+            {lastAction && (
+              <div className="text-sm text-gray-600 flex items-center gap-2">
+                <GameIcons.Dice className={IconSizes.sm} />
+                {lastAction}
+              </div>
             )}
-          </TransformWrapper>
-        </div>
-
-        {/* Scoreboard */}
-        <div className="bg-white rounded-xl shadow-lg p-4">
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <GameIcons.Trophy className={IconSizes.md} />
-            Skor Tablosu
-          </h2>
-          <div className="space-y-2">
-            {gameState.players
-              .sort((a, b) => b.score - a.score)
-              .map((player) => (
-                <div
-                  key={player.id}
-                  className="flex items-center justify-between bg-gray-50 p-3 rounded-lg"
-                >
-                  <span className="font-medium flex items-center gap-2">
-                    <GameIcons.User
-                      className={`${IconSizes.sm} ${
-                        player.id === playerId
-                          ? "text-ottoman-red"
-                          : "text-navy"
-                      }`}
-                    />
-                    {player.name}
-                    {player.id === gameState.currentTurn && (
-                      <GameIcons.Crown
-                        className={`${IconSizes.sm} text-gold`}
-                      />
-                    )}
-                  </span>
-                  <span className="font-bold text-ottoman-red">
-                    {player.score}
-                  </span>
-                </div>
-              ))}
           </div>
+
+          {renderDice()}
+
+          {/* Game Board with Zoom Controls */}
+          <div className="relative mb-4 bg-white rounded-xl shadow-lg p-4">
+            <TransformWrapper
+              initialScale={1}
+              minScale={0.5}
+              maxScale={2}
+              centerOnInit={true}
+              limitToBounds={true}
+              wheel={{ step: 0.1 }}
+            >
+              {({ zoomIn, zoomOut }) => (
+                <>
+                  <div className="absolute top-4 right-4 flex gap-2 z-30">
+                    <button
+                      onClick={() => zoomIn()}
+                      className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50"
+                    >
+                      <PlusIcon className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => zoomOut()}
+                      className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50"
+                    >
+                      <MinusIcon className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <TransformComponent
+                    wrapperClass="!w-full !h-[600px]"
+                    contentClass="!w-full !h-full flex items-center justify-center"
+                  >
+                    <div
+                      className="relative bg-gradient-to-br from-ivory to-gray-100 rounded-lg p-8"
+                      style={{
+                        width:
+                          BOARD_COLUMNS * (SPACE_SIZE + SPACE_GAP) +
+                          SPACE_GAP * 2,
+                        height:
+                          Math.ceil(BOARD_SIZE / BOARD_COLUMNS) *
+                            (SPACE_SIZE + SPACE_GAP) +
+                          SPACE_GAP * 2,
+                      }}
+                    >
+                      {/* Render board spaces */}
+                      {gameState.board.map((space, index) =>
+                        renderBoardSpace(space, index)
+                      )}
+
+                      {/* Render all players */}
+                      {gameState.players.map((player, idx) => {
+                        const playersOnSameSpace = gameState.players.filter(
+                          (p) => p.position === player.position
+                        );
+                        const indexOnSpace = playersOnSameSpace.findIndex(
+                          (p) => p.id === player.id
+                        );
+                        return renderPlayerPiece(
+                          player,
+                          indexOnSpace,
+                          playersOnSameSpace.length
+                        );
+                      })}
+                    </div>
+                  </TransformComponent>
+                </>
+              )}
+            </TransformWrapper>
+          </div>
+
+          {/* Scoreboard */}
+          <div className="bg-white rounded-xl shadow-lg p-4">
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <GameIcons.Trophy className={IconSizes.md} />
+              Skor Tablosu
+            </h2>
+            <div className="space-y-2">
+              {gameState.players
+                .sort((a, b) => b.score - a.score)
+                .map((player) => (
+                  <div
+                    key={player.id}
+                    className="flex items-center justify-between bg-gray-50 p-3 rounded-lg"
+                  >
+                    <span className="font-medium flex items-center gap-2">
+                      <GameIcons.User
+                        className={`${IconSizes.sm} ${
+                          player.id === playerId
+                            ? "text-ottoman-red"
+                            : "text-navy"
+                        }`}
+                      />
+                      {player.name}
+                      {player.id === gameState.currentTurn && (
+                        <GameIcons.Crown
+                          className={`${IconSizes.sm} text-gold`}
+                        />
+                      )}
+                    </span>
+                    <span className="font-bold text-ottoman-red">
+                      {player.score}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          </div>
+
+          {/* Help Button */}
+          <button
+            onClick={() => setShowTutorial(true)}
+            className="fixed bottom-4 right-4 bg-turquoise text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center hover:bg-teal-600 transition-colors"
+          >
+            <GameIcons.Question className={IconSizes.md} />
+          </button>
+
+          {/* Tutorial */}
+          <AnimatePresence>
+            {showTutorial && (
+              <Tutorial onClose={() => setShowTutorial(false)} />
+            )}
+          </AnimatePresence>
         </div>
-
-        {/* Help Button */}
-        <button
-          onClick={() => setShowTutorial(true)}
-          className="fixed bottom-4 right-4 bg-turquoise text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center hover:bg-teal-600 transition-colors"
-        >
-          <GameIcons.Question className={IconSizes.md} />
-        </button>
-
-        {/* Tutorial */}
-        <AnimatePresence>
-          {showTutorial && <Tutorial onClose={() => setShowTutorial(false)} />}
-        </AnimatePresence>
       </div>
-    </div>
+    </>
   );
 };

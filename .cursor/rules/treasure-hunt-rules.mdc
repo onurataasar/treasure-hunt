@@ -1,0 +1,378 @@
+---
+description: 
+globs: 
+---
+This document serves as a comprehensive guide for Cursor, the AI-powered code editor, to assist in the development of the "Hazine Yolculuğu" (Treasure Journey) project. It outlines the project's goals, technical stack, component architecture, localization requirements, and specific guidelines for generating code. By following these rules, Cursor can effectively support the development process, ensuring the game is fun, culturally relevant, and technically sound.
+1. Project Overview and Goals
+Project Name: Hazine Yolculuğu (Treasure Journey)
+Description: A digital board game where players race to collect treasures on a virtual board while navigating challenges, power-ups, and surprises. The game supports both multiplayer (with a lobby system) and solo play (with an AI opponent). It is designed to be quick (10-15 minutes per game), engaging, and culturally relevant for Turkish users.
+Key Features:
+Lobby system with code or QR joining for multiplayer.
+Real-time multiplayer gameplay using Socket.IO.
+Solo mode with an AI opponent.
+Turkish localization (UI, instructions, and content).
+Board game mechanics: dice rolling, player movement, and interactive board spaces.
+Creative elements: dynamic board changes, themed power-ups, mini-games, and player customization.
+Goals:
+Create an interactive and enjoyable board game experience.
+Ensure the game is easy to understand and play, with a focus on Turkish cultural integration.
+Implement a seamless multiplayer experience with real-time updates.
+Provide a solo mode that feels competitive and fun.
+2. Tech Stack and Dependencies
+Frontend:
+React (with hooks for state management).
+Socket.IO-client for real-time communication.
+React-dnd for drag-and-drop functionality (player movement).
+Framer Motion for animations (optional).
+QRCode.react for generating QR codes in the lobby.
+TypeScript for type safety.
+Backend:
+Node.js with Express.
+Socket.IO for real-time multiplayer features.
+Optional: MongoDB for storing player profiles, leaderboards, or game data.
+Styling:
+Tailwind CSS for utility-first styling and responsive design.
+Localization:
+react-i18next for handling Turkish translations.
+Other Tools:
+Vite or Create React App for project setup.
+ESLint and Prettier for code linting and formatting.
+3. Component Structure and Responsibilities
+The project is divided into several key components. Below is an overview of the main components and their responsibilities:
+LobbyScreen:
+Displays the game code and QR code for joining.
+Shows connected players.
+Host controls to start the game.
+GameBoard:
+Renders the grid-based board with different space types (e.g., treasure, challenge, power-up).
+Displays player pieces and their positions.
+Handles dynamic board changes (e.g., new paths or blocked routes).
+PlayerPiece:
+Represents each player's avatar on the board.
+Supports drag-and-drop movement (for touch devices, consider click-to-move).
+DiceRoller:
+Simulates dice rolls with animations.
+Syncs roll results to all players in real-time.
+PowerUpPanel:
+Displays available power-ups for each player.
+Allows players to activate power-ups at strategic times.
+MiniChallenge:
+Pops up when a player lands on a challenge space.
+Includes mini-games like trivia, puzzles, or drawing challenges.
+Supports both solo and multiplayer modes.
+AIService:
+Manages the AI opponent's behavior in solo mode.
+Handles AI decision-making for movement, power-up usage, and mini-games.
+Scoreboard:
+Tracks and displays each player's treasures and points.
+Updates in real-time after each turn or mini-game.
+4. API and Data Flow Specifications
+Real-Time Communication:
+Use Socket.IO for all real-time interactions:
+Player joining/leaving the lobby.
+Dice rolls and player movement.
+Power-up usage and effects.
+Mini-game results and scoring.
+Data Structures:
+Player:
+typescript
+interface Player {
+  id: string;
+  name: string;
+  position: number;
+  treasures: number;
+  powerUps: string[];
+  color: string;  // For player piece visualization
+}
+Board:
+typescript
+interface Board {
+  size: number;  // e.g., 10 for a 10x10 grid
+  spaces: Record<number, string>;  // e.g., { 0: "treasure", 1: "challenge" }
+}
+API Endpoints (if using a backend server):
+GET /game/:code: Retrieve game state by lobby code.
+POST /game/join: Join a game using the lobby code.
+POST /game/start: Start the game (host only).
+5. Localization Requirements
+All UI text, instructions, and in-game content must be in Turkish.
+Use react-i18next to manage translations.
+Ensure that mini-game prompts (e.g., trivia questions, puzzles) are culturally relevant and in Turkish.
+Example translation file structure:
+json
+{
+  "welcome": "Hoş geldiniz!",
+  "startGame": "Oyunu Başlat",
+  "rollDice": "Zarı At",
+  // ...
+}
+6. Guidelines for Generating Code
+When generating code with Cursor, adhere to the following guidelines:
+6.1 General Guidelines
+Coding Style:
+Use functional components with hooks (useState, useEffect, etc.).
+Follow ESLint and Prettier configurations for consistent formatting.
+Use meaningful variable and function names (in English for code, Turkish for UI text).
+Best Practices:
+Keep components small and focused on a single responsibility.
+Use context or a state management library (e.g., Redux) if state becomes complex.
+Ensure that all real-time updates are handled through Socket.IO to maintain synchronization.
+Error Handling:
+Implement fallback UI for network issues or disconnections.
+Provide user-friendly error messages in Turkish.
+Performance:
+Optimize rendering to handle multiple players and dynamic board changes.
+Use memoization (useMemo, useCallback) where necessary to prevent unnecessary re-renders.
+6.2 Mobile-Friendliness, TypeScript, and Tailwind CSS
+To ensure the project is mobile-friendly, uses TypeScript, and incorporates Tailwind CSS, follow these additional principles:
+Mobile-Friendliness
+Responsive Layouts: Use flexible layouts like CSS Flexbox or Grid to adapt the UI to various screen sizes. For example, the game board should scale seamlessly from desktop to mobile screens.
+Touch Interactions: Design interactive elements (e.g., buttons, player pieces) to be large enough for touch inputs, with a minimum size of 48x48 pixels to ensure usability on mobile devices.
+Media Queries: Apply Tailwind’s responsive prefixes (e.g., sm:, md:, lg:) to adjust styling for different breakpoints, ensuring the UI remains functional and visually appealing on smaller screens.
+Performance Optimization: Minimize heavy computations and optimize assets (e.g., images, animations) to maintain smooth performance on mobile devices.
+TypeScript Integration
+Type Definitions: Define interfaces or types for all major data structures and component props. For example:
+typescript
+interface Player {
+  id: string;
+  name: string;
+  position: number;
+  treasures: number;
+  powerUps: string[];
+}
+Type-Safe Components: Ensure React components use typed props and state, e.g.:
+typescript
+interface GameBoardProps {
+  players: Player[];
+  boardSize: number;
+}
+const GameBoard: React.FC<GameBoardProps> = ({ players, boardSize }) => { ... };
+Real-Time Typing: Use TypeScript types for Socket.IO events (e.g., with @types/socket.io-client) to ensure type safety in multiplayer features.
+Strict Mode: Enable TypeScript’s strict mode in tsconfig.json to enforce rigorous type checking and catch errors early.
+Tailwind CSS Styling
+Utility-First Styling: Apply Tailwind’s utility classes to style components efficiently, e.g., flex flex-col items-center justify-center p-4.
+Custom Theme: Define a Turkish-inspired color palette in tailwind.config.js, such as:
+javascript
+module.exports = {
+  theme: {
+    extend: {
+      colors: {
+        turquoise: "#26A69A",
+        ottomanRed: "#C62828",
+        gold: "#FFD700 "
+Assistant: # cursorrules.md
+This document serves as a comprehensive guide for Cursor, the AI-powered code editor, to assist in the development of the "Hazine Yolculuğu" (Treasure Journey) project. It outlines the project's goals, technical stack, component architecture, localization requirements, and specific guidelines for generating code. By following these rules, Cursor can effectively support the development process, ensuring the game is fun, culturally relevant, and technically sound.
+1. Project Overview and Goals
+Project Name: Hazine Yolculuğu (Treasure Journey)
+Description: A digital board game where players race to collect treasures on a virtual board while navigating challenges, power-ups, and surprises. The game supports both multiplayer (with a lobby system) and solo play (with an AI opponent). It is designed to be quick (10-15 minutes per game), engaging, and culturally relevant for Turkish users.
+Key Features:
+Lobby system with code or QR joining for multiplayer.
+Real-time multiplayer gameplay using Socket.IO.
+Solo mode with an AI opponent.
+Turkish localization (UI, instructions, and content).
+Board game mechanics: dice rolling, player movement, and interactive board spaces.
+Creative elements: dynamic board changes, themed power-ups, mini-games, and player customization.
+Goals:
+Create an interactive and enjoyable board game experience.
+Ensure the game is easy to understand and play, with a focus on Turkish cultural integration.
+Implement a seamless multiplayer experience with real-time updates.
+Provide a solo mode that feels competitive and fun.
+2. Tech Stack and Dependencies
+Frontend:
+React (with hooks for state management).
+Socket.IO-client for real-time communication.
+React-dnd for drag-and-drop functionality (player movement).
+Framer Motion for animations (optional).
+QRCode.react for generating QR codes in the lobby.
+TypeScript for type safety.
+Backend:
+Node.js with Express.
+Socket.IO for real-time multiplayer features.
+Optional: MongoDB for storing player profiles, leaderboards, or game data.
+Styling:
+Tailwind CSS for utility-first styling and responsive design.
+Localization:
+react-i18next for handling Turkish translations.
+Other Tools:
+Vite or Create React App for project setup.
+ESLint and Prettier for code linting and formatting.
+3. Component Structure and Responsibilities
+The project is divided into several key components. Below is an overview of the main components and their responsibilities:
+LobbyScreen:
+Displays the game code and QR code for joining.
+Shows connected players.
+Host controls to start the game.
+GameBoard:
+Renders the grid-based board with different space types (e.g., treasure, challenge, power-up).
+Displays player pieces and their positions.
+Handles dynamic board changes (e.g., new paths or blocked routes).
+PlayerPiece:
+Represents each player's avatar on the board.
+Supports drag-and-drop movement (for touch devices, consider click-to-move).
+DiceRoller:
+Simulates dice rolls with animations.
+Syncs roll results to all players in real-time.
+PowerUpPanel:
+Displays available power-ups for each player.
+Allows players to activate power-ups at strategic times.
+MiniChallenge:
+Pops up when a player lands on a challenge space.
+Includes mini-games like trivia, puzzles, or drawing challenges.
+Supports both solo and multiplayer modes.
+AIService:
+Manages the AI opponent's behavior in solo mode.
+Handles AI decision-making for movement, power-up usage, and mini-games.
+Scoreboard:
+Tracks and displays each player's treasures and points.
+Updates in real-time after each turn or mini-game.
+4. API and Data Flow Specifications
+Real-Time Communication:
+Use Socket.IO for all real-time interactions:
+Player joining/leaving the lobby.
+Dice rolls and player movement.
+Power-up usage and effects.
+Mini-game results and scoring.
+Data Structures:
+Player:
+typescript
+interface Player {
+  id: string;
+  name: string;
+  position: number;
+  treasures: number;
+  powerUps: string[];
+  color: string;  // For player piece visualization
+}
+Board:
+typescript
+interface Board {
+  size: number;  // e.g., 10 for a 10x10 grid
+  spaces: Record<number, string>;  // e.g., { 0: "treasure", 1: "challenge" }
+}
+API Endpoints (if using a backend server):
+GET /game/:code: Retrieve game state by lobby code.
+POST /game/join: Join a game using the lobby code.
+POST /game/start: Start the game (host only).
+5. Localization Requirements
+All UI text, instructions, and in-game content must be in Turkish.
+Use react-i18next to manage translations.
+Ensure that mini-game prompts (e.g., trivia questions, puzzles) are culturally relevant and in Turkish.
+Example translation file structure:
+json
+{
+  "welcome": "Hoş geldiniz!",
+  "startGame": "Oyunu Başlat",
+  "rollDice": "Zarı At",
+  // ...
+}
+6. Guidelines for Generating Code
+When generating code with Cursor, adhere to the following guidelines:
+6.1 General Guidelines
+Coding Style:
+Use functional components with hooks (useState, useEffect, etc.).
+Follow ESLint and Prettier configurations for consistent formatting.
+Use meaningful variable and function names (in English for code, Turkish for UI text).
+Best Practices:
+Keep components small and focused on a single responsibility.
+Use context or a state management library (e.g., Redux) if state becomes complex.
+Ensure that all real-time updates are handled through Socket.IO to maintain synchronization.
+Error Handling:
+Implement fallback UI for network issues or disconnections.
+Provide user-friendly error messages in Turkish.
+Performance:
+Optimize rendering to handle multiple players and dynamic board changes.
+Use memoization (useMemo, useCallback) where necessary to prevent unnecessary re-renders.
+6.2 Mobile-Friendliness, TypeScript, and Tailwind CSS
+To ensure the project is mobile-friendly, uses TypeScript, and incorporates Tailwind CSS, follow these additional principles:
+Mobile-Friendliness
+Responsive Layouts: Use flexible layouts like CSS Flexbox or Grid to adapt the UI to various screen sizes. For example, the game board should scale seamlessly from desktop to mobile screens.
+Touch Interactions: Design interactive elements (e.g., buttons, player pieces) to be large enough for touch inputs, with a minimum size of 48x48 pixels to ensure usability on mobile devices.
+Media Queries: Apply Tailwind’s responsive prefixes (e.g., sm:, md:, lg:) to adjust styling for different breakpoints, ensuring the UI remains functional and visually appealing on smaller screens.
+Performance Optimization: Minimize heavy computations and optimize assets (e.g., images, animations) to maintain smooth performance on mobile devices.
+TypeScript Integration
+Type Definitions: Define interfaces or types for all major data structures and component props. For example:
+typescript
+interface Player {
+  id: string;
+  name: string;
+  position: number;
+  treasures: number;
+  powerUps: string[];
+}
+Type-Safe Components: Ensure React components use typed props and state, e.g.:
+typescript
+interface GameBoardProps {
+  players: Player[];
+  boardSize: number;
+}
+const GameBoard: React.FC<GameBoardProps> = ({ players, boardSize }) => { ... };
+Real-Time Typing: Use TypeScript types for Socket.IO events (e.g., with @types/socket.io-client) to ensure type safety in multiplayer features.
+Strict Mode: Enable TypeScript’s strict mode in tsconfig.json to enforce rigorous type checking and catch errors early.
+Tailwind CSS Styling
+Utility-First Styling: Apply Tailwind’s utility classes to style components efficiently, e.g., flex flex-col items-center justify-center p-4.
+Custom Theme: Define a Turkish-inspired color palette in tailwind.config.js, such as:
+javascript
+module.exports = {
+  theme: {
+    extend: {
+      colors: {
+        turquoise: "#26A69A",
+        ottomanRed: "#C62828",
+        gold: "#FFD700",
+      },
+    },
+  },
+};
+Responsive Design: Use Tailwind’s responsive utilities to adapt styles for mobile, e.g., className="text-lg md:text-xl lg:text-2xl".
+Consistency: Extract reusable styles into components or use Tailwind’s @apply directive in custom CSS for recurring patterns.
+Implementation Example
+Here’s how this rule might look in practice for a GameBoard component:
+typescript
+import React from "react";
+
+interface GameBoardProps {
+  players: { id: string; name: string; position: number }[];
+  boardSize: number;
+}
+
+const GameBoard: React.FC<GameBoardProps> = ({ players, boardSize }) => {
+  return (
+    <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2 p-4 bg-turquoise rounded-lg">
+      {Array.from({ length: boardSize }, (_, index) => (
+        <div
+          key={index}
+          className="h-12 w-12 sm:h-16 sm:w-16 bg-gold flex items-center justify-center text-ottomanRed text-lg font-bold touch-action-none"
+        >
+          {players.find((p) => p.position === index)?.name || index}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export default GameBoard;
+7. Specific Tasks for Cursor
+Cursor should assist with the following tasks:
+Component Generation:
+Create boilerplate code for components like LobbyScreen, GameBoard, DiceRoller, etc.
+Implement drag-and-drop functionality for player movement using react-dnd.
+Real-Time Features:
+Set up Socket.IO event listeners and emitters for player actions (e.g., joining, moving, using power-ups).
+Sync dice rolls and player positions across all connected clients.
+AI Logic:
+Develop basic AI behavior for the solo mode, including movement decisions and power-up usage.
+Implement AI participation in mini-games (e.g., answering trivia questions with a delay).
+Mini-Games:
+Generate code for mini-game components, such as trivia questions or simple puzzles.
+Ensure mini-games are timed and provide immediate feedback.
+Localization:
+Assist in structuring translation files and integrating react-i18next.
+Generate culturally relevant content for mini-games and board spaces.
+Testing & Debugging:
+Suggest unit tests for critical components (e.g., dice rolling, player movement).
+Help debug real-time synchronization issues or UI glitches.
+8. Additional Notes
+Cultural Sensitivity: Ensure all content is respectful and appropriate for Turkish players.
+Accessibility: Design the UI to be touch-friendly and accessible on both desktop and mobile devices.
+Visual Design: Use a Turkish-inspired color palette and consider adding subtle animations for a polished feel.
+By adhering to these rules, Cursor can effectively assist in building "Hazine Yolculuğu," ensuring the game is engaging, culturally relevant, and technically robust.

@@ -212,10 +212,17 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
     const nextIndex = index + 1;
     const row = Math.floor(index / BOARD_COLUMNS);
     const isReversedRow = row % 2 === 1;
+    const isLastInRow = (index + 1) % BOARD_COLUMNS === 0;
+    const isFirstInRow = index % BOARD_COLUMNS === 0;
+
+    // Fix next position logic for row transitions
     const nextPos =
-      nextIndex < BOARD_SIZE &&
-      (nextIndex % BOARD_COLUMNS !== 0 || isReversedRow)
-        ? getBoardSpacePosition(nextIndex)
+      nextIndex < BOARD_SIZE
+        ? (isLastInRow && !isReversedRow) || (isFirstInRow && isReversedRow)
+          ? getBoardSpacePosition(nextIndex)
+          : nextIndex % BOARD_COLUMNS !== 0 || isReversedRow
+          ? getBoardSpacePosition(nextIndex)
+          : null
         : null;
 
     // Calculate SVG path for connector
@@ -235,9 +242,11 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
       const endX = startX + distance;
       const endY = startY;
 
-      // Add a slight curve
+      // Add a curve that follows the path direction
       const midX = (startX + endX) / 2;
-      const midY = startY + (isReversedRow ? 20 : -20);
+      const curveDirection = isReversedRow ? -1 : 1;
+      const curveAmount = Math.min(40, distance * 0.2); // Adjust curve based on distance
+      const midY = startY + curveDirection * curveAmount;
 
       return (
         <path

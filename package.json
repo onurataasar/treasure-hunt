@@ -12,10 +12,14 @@
     "dev:backend": "cd backend && npm run dev",
     "install:all": "npm install && npm run install:frontend && npm run install:backend",
     "install:frontend": "cd frontend && npm install",
-    "install:backend": "cd backend && npm install"
+    "install:backend": "cd backend && npm install",
+    "test": "jest"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "@types/jest": "^29.5.14",
+    "concurrently": "^8.2.2",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.6"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.0"

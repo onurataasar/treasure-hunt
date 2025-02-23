@@ -76,13 +76,49 @@ export function movePlayer(
   const player = gameState.players.find((p) => p.id === playerId);
   if (!player) return gameState;
 
-  const newPosition = Math.min(player.position + steps, BOARD_SIZE - 1);
-  player.position = newPosition;
+  // Calculate new position with bounds checking
+  const newPosition = Math.min(
+    Math.max(0, player.position + steps),
+    BOARD_SIZE - 1
+  );
 
-  // Handle space effects
-  const space = gameState.board[newPosition];
-  if (space.points) {
-    player.score += space.points;
+  // Only update if position actually changed
+  if (newPosition !== player.position) {
+    player.position = newPosition;
+
+    // Handle space effects
+    const space = gameState.board[newPosition];
+    if (space.points) {
+      player.score = (player.score || 0) + space.points;
+    }
+
+    // Apply space effects
+    if (space.effect) {
+      switch (space.effect) {
+        case "Ekstra zar atma hakkı":
+          // Player gets another turn
+          return { ...gameState };
+        case "Rakibi 2 adım geriye at":
+          // Find next player and move them back
+          const nextPlayerIndex =
+            (gameState.players.findIndex((p) => p.id === playerId) + 1) %
+            gameState.players.length;
+          const nextPlayer = gameState.players[nextPlayerIndex];
+          if (nextPlayer) {
+            nextPlayer.position = Math.max(0, nextPlayer.position - 2);
+          }
+          break;
+        case "Bir sonraki tuzaktan korun":
+          player.hasTrapProtection = true;
+          break;
+      }
+    }
+
+    // Handle trap spaces with protection
+    if (space.type === "trap" && player.hasTrapProtection) {
+      player.score = (player.score || 0) + (space.points || 0) * -1; // Reverse trap effect
+      player.hasTrapProtection = false;
+    }
   }
 
   // Move to next player's turn
@@ -97,8 +133,11 @@ export function movePlayer(
 }
 
 export function checkWinCondition(gameState: GameState): string | null {
-  // Check if any player has reached the end
-  const winner = gameState.players.find((p) => p.position === BOARD_SIZE - 1);
+  // Check if any player has reached the end or has max score
+  const winner = gameState.players.find(
+    (p) => p.position === BOARD_SIZE - 1 || (p.score || 0) >= 100
+  );
+
   if (winner) {
     return winner.id;
   }

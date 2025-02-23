@@ -5,6 +5,7 @@ export interface Player {
   isReady: boolean;
   position: number;
   score: number;
+  hasTrapProtection?: boolean;
 }
 
 export interface GameState {

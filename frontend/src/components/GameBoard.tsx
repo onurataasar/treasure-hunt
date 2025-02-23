@@ -84,6 +84,7 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
   const [movingPlayerId, setMovingPlayerId] = useState<string | null>(null);
   const [showDiceModal, setShowDiceModal] = useState(false);
   const [showEffectsModal, setShowEffectsModal] = useState(false);
+  const [selectedSpace, setSelectedSpace] = useState<BoardSpace | null>(null);
   const [currentEffect, setCurrentEffect] = useState<{
     player: Player;
     space: BoardSpace;
@@ -295,6 +296,7 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
 
         {/* Space background */}
         <div
+          onClick={() => setSelectedSpace(space)}
           className={`${getSpaceColor(
             space
           )} w-full h-full rounded-lg shadow-lg flex flex-col items-center justify-center
@@ -447,6 +449,21 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
     );
   };
 
+  const getSpaceDescription = (space: BoardSpace) => {
+    switch (space.type) {
+      case "treasure":
+        return `Hazine! ${space.points} puan kazanırsın.`;
+      case "trap":
+        return `Tuzak! ${space.points} puan kaybedersin.`;
+      case "powerup":
+        return `Güç: ${space.effect}`;
+      case "challenge":
+        return "Meydan okuma karesi!";
+      default:
+        return "Normal kare";
+    }
+  };
+
   return (
     <>
       <DiceModal
@@ -463,6 +480,65 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
           space={currentEffect.space}
         />
       )}
+
+      {/* Space Info Modal */}
+      <AnimatePresence>
+        {selectedSpace && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 bg-white rounded-xl shadow-lg p-4 min-w-[300px]"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                {getSpaceIcon(selectedSpace.type)}
+                <span className="font-semibold capitalize">
+                  {selectedSpace.type} Karesi
+                </span>
+              </div>
+              <button
+                onClick={() => setSelectedSpace(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <GameIcons.Close className={IconSizes.sm} />
+              </button>
+            </div>
+            <p className="text-gray-600">
+              {getSpaceDescription(selectedSpace)}
+            </p>
+            {/* Show players on this space */}
+            {gameState.players.filter((p) => p.position === selectedSpace.id)
+              .length > 0 && (
+              <div className="mt-2 pt-2 border-t">
+                <p className="text-sm text-gray-500 mb-1">
+                  Bu karedeki oyuncular:
+                </p>
+                <div className="flex gap-2">
+                  {gameState.players
+                    .filter((p) => p.position === selectedSpace.id)
+                    .map((player) => (
+                      <div
+                        key={player.id}
+                        className="flex items-center gap-1 text-sm"
+                      >
+                        <GameIcons.User
+                          className={`${IconSizes.sm} ${
+                            player.id === playerId
+                              ? "text-ottoman-red"
+                              : "text-navy"
+                          }`}
+                        />
+                        <span>{player.name}</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="min-h-screen bg-ivory p-4">
         <div className="max-w-[1600px] mx-auto">
           {/* Game Status */}

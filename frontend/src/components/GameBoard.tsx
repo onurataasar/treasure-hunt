@@ -300,10 +300,19 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
           className={`${getSpaceColor(
             space
           )} w-full h-full rounded-lg shadow-lg flex flex-col items-center justify-center
-          relative transition-transform hover:scale-105 cursor-pointer border-2 border-gray-200/30`}
+          relative transition-transform hover:scale-105 cursor-pointer border-2 ${
+            space.type === "normal" ? "border-navy/10" : "border-gray-200/30"
+          }`}
           style={{
             boxShadow:
               "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+            ...(space.type === "normal" && {
+              background: `
+                linear-gradient(135deg, #ffffff 21px, #f3f4f6 22px, #f3f4f6 24px, transparent 24px, transparent 67px, #f3f4f6 67px, #f3f4f6 69px, transparent 69px),
+                linear-gradient(225deg, #ffffff 21px, #f3f4f6 22px, #f3f4f6 24px, transparent 24px, transparent 67px, #f3f4f6 67px, #f3f4f6 69px, transparent 69px)`,
+              backgroundColor: "#ffffff",
+              backgroundSize: "64px 64px",
+            }),
           }}
         >
           {getSpaceIcon(space.type)}
@@ -312,12 +321,17 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
               {space.points > 0 ? `+${space.points}` : space.points}
             </span>
           )}
+          {space.type === "normal" && (
+            <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-navy/[0.02] to-ottoman-red/[0.02]" />
+          )}
         </div>
 
         {/* Space number */}
         <div
-          className="absolute -top-1 -left-1 w-5 h-5 bg-gray-800 rounded-full flex items-center justify-center text-xs text-white font-medium"
-          style={{ opacity: 0.3 }}
+          className={`absolute -top-1 -left-1 w-5 h-5 ${
+            space.type === "normal" ? "bg-gray-400" : "bg-gray-800"
+          } rounded-full flex items-center justify-center text-xs text-white font-medium`}
+          style={{ opacity: space.type === "normal" ? 0.2 : 0.3 }}
         >
           {index + 1}
         </div>

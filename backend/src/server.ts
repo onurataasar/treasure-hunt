@@ -121,22 +121,36 @@ io.on("connection", (socket) => {
     "rollDice",
     ({ gameCode, playerId }: { gameCode: string; playerId: string }) => {
       const game = games.get(gameCode);
-      if (!game || game.currentTurn !== playerId) return;
+      if (!game || game.currentTurn !== playerId || game.diceRoll !== null)
+        return;
 
       const roll = rollDice();
-      game.diceRoll = roll;
-      io.to(gameCode).emit("gameState", game);
+      const updatedGame = { ...game, diceRoll: roll };
+      games.set(gameCode, updatedGame);
+      io.to(gameCode).emit("gameState", updatedGame);
 
-      // Automatically move player after a short delay
       setTimeout(() => {
-        const updatedGame = movePlayer(game, playerId, roll);
-        const winner = checkWinCondition(updatedGame);
+        const currentGame = games.get(gameCode);
+        if (
+          !currentGame ||
+          currentGame.currentTurn !== playerId ||
+          currentGame.diceRoll !== roll
+        )
+          return;
 
+        const updatedGameAfterMove = movePlayer(
+          { ...currentGame },
+          playerId,
+          roll
+        );
+        games.set(gameCode, updatedGameAfterMove);
+
+        const winner = checkWinCondition(updatedGameAfterMove);
         if (winner) {
           io.to(gameCode).emit("gameWon", winner);
         }
 
-        io.to(gameCode).emit("gameState", updatedGame);
+        io.to(gameCode).emit("gameState", updatedGameAfterMove);
       }, 1000);
     }
   );

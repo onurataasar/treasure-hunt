@@ -73,8 +73,10 @@ export function movePlayer(
   playerId: string,
   steps: number
 ): GameState {
-  const player = gameState.players.find((p) => p.id === playerId);
-  if (!player) return gameState;
+  // Create a deep copy of the game state to avoid mutations
+  const newGameState = JSON.parse(JSON.stringify(gameState));
+  const player = newGameState.players.find((p: Player) => p.id === playerId);
+  if (!player) return newGameState;
 
   // Calculate new position with bounds checking
   const newPosition = Math.min(
@@ -85,10 +87,17 @@ export function movePlayer(
   // Only update if position actually changed
   if (newPosition !== player.position) {
     player.position = newPosition;
+    const space = newGameState.board[newPosition];
 
-    // Handle space effects
-    const space = gameState.board[newPosition];
-    if (space.points) {
+    // Handle trap spaces with protection first
+    if (space.type === "trap") {
+      if (player.hasTrapProtection) {
+        player.hasTrapProtection = false; // Use up protection
+      } else if (space.points) {
+        player.score = (player.score || 0) + space.points;
+      }
+    } else if (space.points) {
+      // Handle non-trap points (treasure)
       player.score = (player.score || 0) + space.points;
     }
 
@@ -96,40 +105,42 @@ export function movePlayer(
     if (space.effect) {
       switch (space.effect) {
         case "Ekstra zar atma hakkı":
-          // Player gets another turn
-          return { ...gameState };
+          // Keep the current player's turn
+          newGameState.currentTurn = playerId;
+          newGameState.diceRoll = null;
+          return newGameState;
+
         case "Rakibi 2 adım geriye at":
-          // Find next player and move them back
+          // Move the next player back 2 spaces
           const nextPlayerIndex =
-            (gameState.players.findIndex((p) => p.id === playerId) + 1) %
-            gameState.players.length;
-          const nextPlayer = gameState.players[nextPlayerIndex];
-          if (nextPlayer) {
-            nextPlayer.position = Math.max(0, nextPlayer.position - 2);
+            (newGameState.players.findIndex((p: Player) => p.id === playerId) +
+              1) %
+            newGameState.players.length;
+          const targetPlayer = newGameState.players[nextPlayerIndex];
+          if (targetPlayer) {
+            targetPlayer.position = Math.max(0, targetPlayer.position - 2);
           }
           break;
+
         case "Bir sonraki tuzaktan korun":
           player.hasTrapProtection = true;
           break;
       }
     }
-
-    // Handle trap spaces with protection
-    if (space.type === "trap" && player.hasTrapProtection) {
-      player.score = (player.score || 0) + (space.points || 0) * -1; // Reverse trap effect
-      player.hasTrapProtection = false;
-    }
   }
 
-  // Move to next player's turn
-  const currentPlayerIndex = gameState.players.findIndex(
-    (p) => p.id === playerId
-  );
-  const nextPlayerIndex = (currentPlayerIndex + 1) % gameState.players.length;
-  gameState.currentTurn = gameState.players[nextPlayerIndex].id;
-  gameState.diceRoll = null;
+  // Move to next player's turn (unless extra turn was granted)
+  if (newGameState.currentTurn === playerId) {
+    const currentPlayerIndex = newGameState.players.findIndex(
+      (p: Player) => p.id === playerId
+    );
+    const nextPlayerIndex =
+      (currentPlayerIndex + 1) % newGameState.players.length;
+    newGameState.currentTurn = newGameState.players[nextPlayerIndex].id;
+    newGameState.diceRoll = null;
+  }
 
-  return { ...gameState };
+  return newGameState;
 }
 
 export function checkWinCondition(gameState: GameState): string | null {

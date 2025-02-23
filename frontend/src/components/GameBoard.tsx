@@ -8,6 +8,7 @@ import { GameIcons, IconSizes } from "../constants/icons";
 import { MinusIcon, PlusIcon } from "@heroicons/react/24/solid";
 import { DiceModal } from "./DiceModal";
 import { RoundEffectsModal } from "./RoundEffectsModal";
+import { useDiceStore } from "../stores/diceStore";
 
 const BOARD_SIZE = 36;
 const SPACE_SIZE = 90; // Slightly larger for better visibility
@@ -78,7 +79,6 @@ interface GameBoardProps {
 }
 
 export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
-  const [isRolling, setIsRolling] = useState(false);
   const [showTutorial, setShowTutorial] = useState(true);
   const [lastAction, setLastAction] = useState<string>("");
   const [movingPlayerId, setMovingPlayerId] = useState<string | null>(null);
@@ -94,6 +94,7 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
   >({});
   const isMyTurn = gameState.currentTurn === playerId;
   const transformComponentRef = useRef<any>(null);
+  const { isRolling, setIsRolling, reset } = useDiceStore();
 
   // Initialize previous positions
   useEffect(() => {
@@ -142,7 +143,6 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
 
   const handleRollDice = () => {
     if (!isMyTurn || isRolling || gameState.diceRoll !== null) return;
-    setIsRolling(true);
     setShowDiceModal(true);
   };
 
@@ -150,17 +150,20 @@ export const GameBoard = ({ gameState, playerId }: GameBoardProps) => {
     socket.emit("rollDice", { gameCode: gameState.gameCode, playerId });
   };
 
+  // Handle dice roll state changes
   useEffect(() => {
     if (gameState.diceRoll !== null) {
       setLastAction(`${getCurrentPlayer()?.name} ${gameState.diceRoll} attı!`);
-      setIsRolling(false);
+    } else {
+      reset();
     }
-  }, [gameState.diceRoll]);
+  }, [gameState.diceRoll, reset]);
 
-  // Reset isRolling when turn changes
+  // Reset dice state on turn change
   useEffect(() => {
-    setIsRolling(false);
-  }, [gameState.currentTurn]);
+    reset();
+    setShowDiceModal(false);
+  }, [gameState.currentTurn, reset]);
 
   const getCurrentPlayer = () => {
     return gameState.players.find((p) => p.id === gameState.currentTurn);
